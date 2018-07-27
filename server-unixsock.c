@@ -221,6 +221,7 @@ static int connect_unixsock_obj(obj_t *unixsock)
     struct stat         st;
     struct sockaddr_un  saddr;
     size_t              n;
+    int			isViaInotify;
 
     assert(unixsock != NULL);
     assert(is_unixsock_obj(unixsock));
@@ -228,6 +229,9 @@ static int connect_unixsock_obj(obj_t *unixsock)
     assert(strlen(unixsock->aux.unixsock.dev) <= max_unixsock_dev_strlen());
 
     auxp = &(unixsock->aux.unixsock);
+
+    isViaInotify = auxp->isViaInotify;
+    auxp->isViaInotify = 0;
 
     if (auxp->timer >= 0) {
         (void) tpoll_timeout_cancel(tp_global, auxp->timer);
@@ -278,8 +282,7 @@ static int connect_unixsock_obj(obj_t *unixsock)
      */
     if (connect(unixsock->fd,
             (struct sockaddr *) &saddr, sizeof(saddr)) < 0) {
-        if (auxp->isViaInotify) {
-            auxp->isViaInotify = 0;
+        if (isViaInotify) {
             auxp->delay = UNIXSOCK_MIN_TIMEOUT;
             DPRINTF((15, "Reset [%s] reconnect delay due to inotify event\n",
                 unixsock->name));
